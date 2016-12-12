@@ -311,10 +311,14 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 	//  Checkpoint and restore
 	// ------------------------------------------------------------------------
 
+	//
 	@Override
 	public void initializeState(FunctionInitializationContext context) throws Exception {
 
+
+		//
 		OperatorStateStore stateStore = context.getOperatorStateStore();
+		//
 		offsetsStateForCheckpoint = stateStore.getSerializableListState(DefaultOperatorStateBackend.DEFAULT_OPERATOR_STATE_NAME);
 
 		if (context.isRestored()) {
