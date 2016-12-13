@@ -155,6 +155,8 @@ public class OperatorStateBackendTest {
 			//метод, удаляющий все зарегистрированные в операторе снепшотов состояния
 			operatorStateBackend.dispose();
 
+			//метод, создающий новый оператор снепшотов,
+			// восстанавливающий своё состояние из переданного списка проводника снепшотов
 			operatorStateBackend = abstractStateBackend.restoreOperatorStateBackend(
 					createMockEnvironment(), "testOperator", Collections.singletonList(stateHandle));
 

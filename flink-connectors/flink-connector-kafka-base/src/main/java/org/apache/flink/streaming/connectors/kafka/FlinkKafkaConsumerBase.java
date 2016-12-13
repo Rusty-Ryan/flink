@@ -316,9 +316,9 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 	public void initializeState(FunctionInitializationContext context) throws Exception {
 
 
-		//
+		//из контекста извлекается оператор снепшотов
 		OperatorStateStore stateStore = context.getOperatorStateStore();
-		//
+		//из оператора снепшотов извлекается список состояний оператора
 		offsetsStateForCheckpoint = stateStore.getSerializableListState(DefaultOperatorStateBackend.DEFAULT_OPERATOR_STATE_NAME);
 
 		if (context.isRestored()) {

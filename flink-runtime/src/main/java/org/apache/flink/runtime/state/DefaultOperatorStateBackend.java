@@ -93,15 +93,19 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
 		TypeSerializer<S> partitionStateSerializer = Preconditions.checkNotNull(stateDescriptor.getSerializer());
 
 
+		//получает ссылку на список состояний данного оператора
+		// из мапы, содержащей все списки зарегистрированных состояний опереторов
 		@SuppressWarnings("unchecked")
 		PartitionableListState<S> partitionableListState = (PartitionableListState<S>) registeredStates.get(name);
 
-		//если список состояний не был в зарегистрированных состояниях, то создаётся новый
+		//если список состояний данного оператора не был в зарегистрированных состояниях, то создаётся новый
+		// если был, то просто возвращается
 		if (null == partitionableListState) {
 
 			//создаётся partitionable? список состояний, который принимает сериализатор и создаёт в себе пустой ArrayList
 			partitionableListState = new PartitionableListState<>(partitionStateSerializer);
 
+			//он помещается в мапу зарегистрированных состояний, чтобы повторно не загружать снепшоты
 			registeredStates.put(name, partitionableListState);
 
 			// Try to restore previous state if state handles to snapshots are provided
@@ -112,7 +116,7 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
 					//TODO we coud be even more gc friendly be removing handles from the collections one the map is empty
 					// search and remove to be gc friendly
 
-					//вызывает map из проводника снепшотов, содержащую имя - массив оффсетов
+					//вызывает map из проводника снепшотов, содержащую имя (состояния) - массив оффсетов
 					//извлекает оттуда массив оффсетов, по имени, взятому из StateDescriptor
 					long[] offsets = stateHandle.getStateNameToPartitionOffsets().remove(name);
 

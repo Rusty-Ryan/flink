@@ -215,6 +215,8 @@ public class FlinkKafkaConsumerBaseTest {
 		//   prepare fake states
 		// --------------------------------------------------------------------
 
+		//подготавливаются данные (офсеты по партициям)
+		// для 3х чекпоинтов
 		final HashMap<KafkaTopicPartition, Long> state1 = new HashMap<>();
 		state1.put(new KafkaTopicPartition("abc", 13), 16768L);
 		state1.put(new KafkaTopicPartition("def", 7), 987654321L);
@@ -229,22 +231,33 @@ public class FlinkKafkaConsumerBaseTest {
 
 		// --------------------------------------------------------------------
 		
+		//создаётся мок фетчера
 		final AbstractFetcher<String, ?> fetcher = mock(AbstractFetcher.class);
+		//задаётся возвращаемое значение на вызов метода
+		// значения будут возвращаться по одному на один вызов
 		when(fetcher.snapshotCurrentState()).thenReturn(state1, state2, state3);
 			
+		//мапа офсетов, ожидающих записи в кафку
 		final LinkedMap pendingOffsetsToCommit = new LinkedMap();
 	
+		//создаётся консюмер, в который поставляются фетчер, оффсеты для коммита в кафку, флаг "работает"
 		FlinkKafkaConsumerBase<String> consumer = getConsumer(fetcher, pendingOffsetsToCommit, true);
+
 		assertEquals(0, pendingOffsetsToCommit.size());
 
+		//создаётся мок объекта упроавляющего снепшотами состояний операторов
 		OperatorStateStore backend = mock(OperatorStateStore.class);
 
+		//создаётся реализация интерфейса ListState<T> для тестов
 		TestingListState<Serializable> listState = new TestingListState<>();
 
+		//задаётся ракция на метод, по которой возвращается listState
 		when(backend.getSerializableListState(Matchers.any(String.class))).thenReturn(listState);
 
+		//создаётся мок интерфейса, который будет возвращать объект управляющий снепшотами
 		StateInitializationContext initializationContext = mock(StateInitializationContext.class);
 
+		//задаётся его поведение
 		when(initializationContext.getOperatorStateStore()).thenReturn(backend);
 		when(initializationContext.isRestored()).thenReturn(false, true, true, true);
 
@@ -333,16 +346,20 @@ public class FlinkKafkaConsumerBaseTest {
 	private static <T> FlinkKafkaConsumerBase<T> getConsumer(
 			AbstractFetcher<T, ?> fetcher, LinkedMap pendingOffsetsToCommit, boolean running) throws Exception
 	{
+		//создаётся тестовый консюмер
 		FlinkKafkaConsumerBase<T> consumer = new DummyFlinkKafkaConsumer<>();
 
+		//в консюмер проставляется ссылка на переданный фетчер
 		Field fetcherField = FlinkKafkaConsumerBase.class.getDeclaredField("kafkaFetcher");
 		fetcherField.setAccessible(true);
 		fetcherField.set(consumer, fetcher);
 
+		//проставляется ссылка на офсеты ожидающие коммита в кафку
 		Field mapField = FlinkKafkaConsumerBase.class.getDeclaredField("pendingOffsetsToCommit");
 		mapField.setAccessible(true);
 		mapField.set(consumer, pendingOffsetsToCommit);
 
+		//проставляется флаг "консюмер в работе"
 		Field runningField = FlinkKafkaConsumerBase.class.getDeclaredField("running");
 		runningField.setAccessible(true);
 		runningField.set(consumer, running);
@@ -361,7 +378,12 @@ public class FlinkKafkaConsumerBaseTest {
 		}
 
 		@Override
-		protected AbstractFetcher<T, ?> createFetcher(SourceContext<T> sourceContext, List<KafkaTopicPartition> thisSubtaskPartitions, SerializedValue<AssignerWithPeriodicWatermarks<T>> watermarksPeriodic, SerializedValue<AssignerWithPunctuatedWatermarks<T>> watermarksPunctuated, StreamingRuntimeContext runtimeContext) throws Exception {
+		protected AbstractFetcher<T, ?> createFetcher(SourceContext<T> sourceContext,
+													  List<KafkaTopicPartition> thisSubtaskPartitions,
+													  SerializedValue<AssignerWithPeriodicWatermarks<T>> watermarksPeriodic,
+													  SerializedValue<AssignerWithPunctuatedWatermarks<T>> watermarksPunctuated,
+													  StreamingRuntimeContext runtimeContext) throws Exception {
+
 			AbstractFetcher<T, ?> fetcher = mock(AbstractFetcher.class);
 			doAnswer(new Answer() {
 				@Override
