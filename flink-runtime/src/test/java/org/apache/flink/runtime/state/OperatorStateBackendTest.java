@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 
 public class OperatorStateBackendTest {
 
+	//state backend определяющий, как состояния сохраняются и хранятся в процессе че
 	AbstractStateBackend abstractStateBackend = new MemoryStateBackend(1024);
 
 	static Environment createMockEnvironment() {
@@ -50,6 +51,10 @@ public class OperatorStateBackendTest {
 
 	@Test
 	public void testCreateNew() throws Exception {
+
+		//интерфейс,объединяющий OperatorStateStore и Snapshotable<OperatorStateHandle>
+		//OpertorStateStore: содержит методы, возвращающие ListState
+		//Snapshotable: Interface for operations that can perform snapshots of their state
 		OperatorStateBackend operatorStateBackend = createNewOperatorStateBackend();
 		assertNotNull(operatorStateBackend);
 		assertTrue(operatorStateBackend.getRegisteredStateNames().isEmpty());
@@ -57,16 +62,26 @@ public class OperatorStateBackendTest {
 
 	@Test
 	public void testRegisterStates() throws Exception {
+		//Интерфейс содержащий методы для сохранения и загрузки снепшотов
 		OperatorStateBackend operatorStateBackend = createNewOperatorStateBackend();
+
+		//создание двух описаний состояний опереторов
 		ListStateDescriptor<Serializable> stateDescriptor1 = new ListStateDescriptor<>("test1", new JavaSerializer<>());
 		ListStateDescriptor<Serializable> stateDescriptor2 = new ListStateDescriptor<>("test2", new JavaSerializer<>());
+
+		//получение описания состояния оператора
 		ListState<Serializable> listState1 = operatorStateBackend.getOperatorState(stateDescriptor1);
 		assertNotNull(listState1);
 		assertEquals(1, operatorStateBackend.getRegisteredStateNames().size());
+
 		Iterator<Serializable> it = listState1.get().iterator();
 		assertTrue(!it.hasNext());
+
+
+		//добавляем элементы в список состояний
 		listState1.add(42);
 		listState1.add(4711);
+
 
 		it = listState1.get().iterator();
 		assertEquals(42, it.next());
@@ -111,7 +126,10 @@ public class OperatorStateBackendTest {
 
 	@Test
 	public void testSnapshotRestore() throws Exception {
+		//Создание оператора состояний/снепшотов
 		OperatorStateBackend operatorStateBackend = createNewOperatorStateBackend();
+
+
 		ListStateDescriptor<Serializable> stateDescriptor1 = new ListStateDescriptor<>("test1", new JavaSerializer<>());
 		ListStateDescriptor<Serializable> stateDescriptor2 = new ListStateDescriptor<>("test2", new JavaSerializer<>());
 		ListState<Serializable> listState1 = operatorStateBackend.getOperatorState(stateDescriptor1);
@@ -124,11 +142,17 @@ public class OperatorStateBackendTest {
 		listState2.add(13);
 		listState2.add(23);
 
+
+		//в метод объекта, определяющего основы снепшоттинга, передаётся ID работы и идентификатор оператора
+		//метод возвращает фабрику потоков для чтения и записи снепшотов
 		CheckpointStreamFactory streamFactory = abstractStateBackend.createStreamFactory(new JobID(), "testOperator");
+		//в метод оператора снепшотов передаётся id чекпоинта, timestamp и фабрика потоков
+		//он возвращает RunnableFuture, из которого извлекается проводник снепшотов
 		OperatorStateHandle stateHandle = operatorStateBackend.snapshot(1, 1, streamFactory).get();
 
 		try {
 
+			//метод, удаляющий все зарегистрированные в операторе снепшотов состояния
 			operatorStateBackend.dispose();
 
 			operatorStateBackend = abstractStateBackend.restoreOperatorStateBackend(

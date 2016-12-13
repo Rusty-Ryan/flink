@@ -75,6 +75,8 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
 	public DefaultOperatorStateBackend(ClassLoader userClassLoader) {
 		this(userClassLoader, null);
 	}
+
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T extends Serializable> ListState<T> getSerializableListState(String stateName) throws Exception {
@@ -90,37 +92,58 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
 		String name = Preconditions.checkNotNull(stateDescriptor.getName());
 		TypeSerializer<S> partitionStateSerializer = Preconditions.checkNotNull(stateDescriptor.getSerializer());
 
+
 		@SuppressWarnings("unchecked")
 		PartitionableListState<S> partitionableListState = (PartitionableListState<S>) registeredStates.get(name);
 
+		//если список состояний не был в зарегистрированных состояниях, то создаётся новый
 		if (null == partitionableListState) {
 
+			//создаётся partitionable? список состояний, который принимает сериализатор и создаёт в себе пустой ArrayList
 			partitionableListState = new PartitionableListState<>(partitionStateSerializer);
 
 			registeredStates.put(name, partitionableListState);
 
 			// Try to restore previous state if state handles to snapshots are provided
+			//пробует восстановить предыдущее состояние, если список проводников к снепшотам не пуст
 			if (restoreSnapshots != null) {
+
 				for (OperatorStateHandle stateHandle : restoreSnapshots) {
 					//TODO we coud be even more gc friendly be removing handles from the collections one the map is empty
 					// search and remove to be gc friendly
+
+					//вызывает map из проводника снепшотов, содержащую имя - массив оффсетов
+					//извлекает оттуда массив оффсетов, по имени, взятому из StateDescriptor
 					long[] offsets = stateHandle.getStateNameToPartitionOffsets().remove(name);
 
 					if (offsets != null) {
 
+						//извлекает StreamStateHandle из проводника снепшотов
+						//вызывает у него метод, возвращающий объект позволющий читать данные, ранее записанные в stream
+
+						//интерфейс для создания streamа, для чтения данных из файловой системы
 						FSDataInputStream in = stateHandle.openInputStream();
+
 						try {
+							//входящий поток регистрируется в регистре,
+							// автоматически закрывающем все зарегистрированные потоки при собственном закрытии
 							closeStreamOnCancelRegistry.registerClosable(in);
 
+							// утилитный класс, оборачивающий InputStream в DataInputView
 							DataInputView div = new DataInputViewStreamWrapper(in);
 
 							for (int i = 0; i < offsets.length; ++i) {
 
+								//находит оффсеты с которых будет начинаться чтение
 								in.seek(offsets[i]);
+								//метод десереализующий запись из входящего потока
 								S partitionState = partitionStateSerializer.deserialize(div);
+								//извлечённое состояние добавляется в список состояний
+								//являющимся состоянием оператора
 								partitionableListState.add(partitionState);
 							}
 						} finally {
+							//поток из файла удаляется из регистра и закрывается
 							closeStreamOnCancelRegistry.unregisterClosable(in);
 							in.close();
 						}
@@ -129,6 +152,7 @@ public class DefaultOperatorStateBackend implements OperatorStateBackend {
 			}
 		}
 
+		//возвращается состояние оператора
 		return partitionableListState;
 	}
 	
