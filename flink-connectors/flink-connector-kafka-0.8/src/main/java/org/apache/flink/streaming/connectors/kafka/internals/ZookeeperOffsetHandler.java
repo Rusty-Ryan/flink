@@ -102,6 +102,7 @@ public class ZookeeperOffsetHandler {
 	 */
 	public Map<KafkaTopicPartition, Long> getCommittedOffsets(List<KafkaTopicPartition> partitions) throws Exception {
 		Map<KafkaTopicPartition, Long> ret = new HashMap<>(partitions.size());
+
 		for (KafkaTopicPartition tp : partitions) {
 			Long offset = getOffsetFromZooKeeper(curatorClient, groupId, tp.getTopic(), tp.getPartition());
 

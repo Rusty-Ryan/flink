@@ -142,6 +142,7 @@ public class Kafka08Fetcher<T> extends AbstractFetcher<T, TopicAndPartition> {
 			// read offsets from ZooKeeper for partitions that did not restore offsets
 			{
 				List<KafkaTopicPartition> partitionsWithNoOffset = new ArrayList<>();
+
 				for (KafkaTopicPartitionState<TopicAndPartition> partition : subscribedPartitions()) {
 					if (!partition.isOffsetDefined()) {
 						partitionsWithNoOffset.add(partition.getKafkaTopicPartition());
@@ -149,6 +150,7 @@ public class Kafka08Fetcher<T> extends AbstractFetcher<T, TopicAndPartition> {
 				}
 
 				Map<KafkaTopicPartition, Long> zkOffsets = zookeeperOffsetHandler.getCommittedOffsets(partitionsWithNoOffset);
+
 				for (KafkaTopicPartitionState<TopicAndPartition> partition : subscribedPartitions()) {
 					Long zkOffset = zkOffsets.get(partition.getKafkaTopicPartition());
 					if (zkOffset != null) {
@@ -189,8 +191,10 @@ public class Kafka08Fetcher<T> extends AbstractFetcher<T, TopicAndPartition> {
 				partitionsToAssign.remove(MARKER);
 
 				if (!partitionsToAssign.isEmpty()) {
+
 					LOG.info("Assigning {} partitions to broker threads", partitionsToAssign.size());
-					Map<Node, List<KafkaTopicPartitionState<TopicAndPartition>>> partitionsWithLeaders = 
+
+					Map<Node, List<KafkaTopicPartitionState<TopicAndPartition>>> partitionsWithLeaders =
 							findLeaderForPartitions(partitionsToAssign, kafkaConfig);
 
 					// assign the partitions to the leaders (maybe start the threads)
@@ -353,6 +357,7 @@ public class Kafka08Fetcher<T> extends AbstractFetcher<T, TopicAndPartition> {
 
 		// Set committed offsets in topic partition state
 		KafkaTopicPartitionState<TopicAndPartition>[] partitions = subscribedPartitions();
+
 		for (KafkaTopicPartitionState<TopicAndPartition> partition : partitions) {
 			Long offset = offsets.get(partition.getKafkaTopicPartition());
 			if (offset != null) {

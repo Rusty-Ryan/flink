@@ -221,10 +221,12 @@ public class Kafka09Fetcher<T> extends AbstractFetcher<T, TopicPartition> {
 	@Override
 	public void commitInternalOffsetsToKafka(Map<KafkaTopicPartition, Long> offsets) throws Exception {
 		KafkaTopicPartitionState<TopicPartition>[] partitions = subscribedPartitions();
+
 		Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>(partitions.length);
 
 		for (KafkaTopicPartitionState<TopicPartition> partition : partitions) {
 			Long lastProcessedOffset = offsets.get(partition.getKafkaTopicPartition());
+
 			if (lastProcessedOffset != null) {
 				// committed offsets through the KafkaConsumer need to be 1 more than the last processed offset.
 				// This does not affect Flink's checkpoints/saved state.
