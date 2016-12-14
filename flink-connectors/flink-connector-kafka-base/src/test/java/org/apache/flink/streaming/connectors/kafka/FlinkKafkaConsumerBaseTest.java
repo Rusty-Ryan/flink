@@ -215,17 +215,20 @@ public class FlinkKafkaConsumerBaseTest {
 		//   prepare fake states
 		// --------------------------------------------------------------------
 
-		final HashMap<KafkaTopicPartition, Long> state1 = new HashMap<>();
-		state1.put(new KafkaTopicPartition("abc", 13), 16768L);
-		state1.put(new KafkaTopicPartition("def", 7), 987654321L);
+		final HashMap<KafkaTopicPartition, Long> offsetsState1 = new HashMap<>();
+		offsetsState1.put(new KafkaTopicPartition("abc", 13), 16768L);
+		offsetsState1.put(new KafkaTopicPartition("def", 7), 987654321L);
+		final Tuple2<HashMap<KafkaTopicPartition, Long>, Long> state1 = Tuple2.of(offsetsState1, 1L);
 
-		final HashMap<KafkaTopicPartition, Long> state2 = new HashMap<>();
-		state2.put(new KafkaTopicPartition("abc", 13), 16770L);
-		state2.put(new KafkaTopicPartition("def", 7), 987654329L);
+		final HashMap<KafkaTopicPartition, Long> offsetsState2 = new HashMap<>();
+		offsetsState2.put(new KafkaTopicPartition("abc", 13), 16770L);
+		offsetsState2.put(new KafkaTopicPartition("def", 7), 987654329L);
+		final Tuple2<HashMap<KafkaTopicPartition, Long>, Long> state2 = Tuple2.of(offsetsState2, 2L);
 
-		final HashMap<KafkaTopicPartition, Long> state3 = new HashMap<>();
-		state3.put(new KafkaTopicPartition("abc", 13), 16780L);
-		state3.put(new KafkaTopicPartition("def", 7), 987654377L);
+		final HashMap<KafkaTopicPartition, Long> offsetsState3 = new HashMap<>();
+		offsetsState3.put(new KafkaTopicPartition("abc", 13), 16780L);
+		offsetsState3.put(new KafkaTopicPartition("def", 7), 987654377L);
+		final Tuple2<HashMap<KafkaTopicPartition, Long>, Long> state3 = Tuple2.of(offsetsState3, 3L);
 
 		// --------------------------------------------------------------------
 		
@@ -253,30 +256,21 @@ public class FlinkKafkaConsumerBaseTest {
 		// checkpoint 1
 		consumer.snapshotState(new StateSnapshotContextSynchronousImpl(138, 138));
 
-		HashMap<KafkaTopicPartition, Long> snapshot1 = new HashMap<>();
 
-		for (Serializable serializable : listState.get()) {
-			Tuple2<KafkaTopicPartition, Long> kafkaTopicPartitionLongTuple2 = (Tuple2<KafkaTopicPartition, Long>) serializable;
-			snapshot1.put(kafkaTopicPartitionLongTuple2.f0, kafkaTopicPartitionLongTuple2.f1);
-		}
+		Tuple2<HashMap<KafkaTopicPartition, Long>, Long> snapshot1 = (Tuple2<HashMap<KafkaTopicPartition, Long>, Long>) listState.get().iterator().next();
 
 		assertEquals(state1, snapshot1);
 		assertEquals(1, pendingOffsetsToCommit.size());
-		assertEquals(state1, pendingOffsetsToCommit.get(138L));
+		assertEquals(state1.f0, pendingOffsetsToCommit.get(138L));
 
 		// checkpoint 2
 		consumer.snapshotState(new StateSnapshotContextSynchronousImpl(140, 140));
 
-		HashMap<KafkaTopicPartition, Long> snapshot2 = new HashMap<>();
-
-		for (Serializable serializable : listState.get()) {
-			Tuple2<KafkaTopicPartition, Long> kafkaTopicPartitionLongTuple2 = (Tuple2<KafkaTopicPartition, Long>) serializable;
-			snapshot2.put(kafkaTopicPartitionLongTuple2.f0, kafkaTopicPartitionLongTuple2.f1);
-		}
+		Tuple2<HashMap<KafkaTopicPartition, Long>, Long> snapshot2 = (Tuple2<HashMap<KafkaTopicPartition, Long>, Long>) listState.get().iterator().next();
 
 		assertEquals(state2, snapshot2);
 		assertEquals(2, pendingOffsetsToCommit.size());
-		assertEquals(state2, pendingOffsetsToCommit.get(140L));
+		assertEquals(state2.f0, pendingOffsetsToCommit.get(140L));
 		
 		// ack checkpoint 1
 		consumer.notifyCheckpointComplete(138L);
@@ -286,16 +280,11 @@ public class FlinkKafkaConsumerBaseTest {
 		// checkpoint 3
 		consumer.snapshotState(new StateSnapshotContextSynchronousImpl(141, 141));
 
-		HashMap<KafkaTopicPartition, Long> snapshot3 = new HashMap<>();
-
-		for (Serializable serializable : listState.get()) {
-			Tuple2<KafkaTopicPartition, Long> kafkaTopicPartitionLongTuple2 = (Tuple2<KafkaTopicPartition, Long>) serializable;
-			snapshot3.put(kafkaTopicPartitionLongTuple2.f0, kafkaTopicPartitionLongTuple2.f1);
-		}
+		Tuple2<HashMap<KafkaTopicPartition, Long>, Long> snapshot3 = (Tuple2<HashMap<KafkaTopicPartition, Long>, Long>) listState.get().iterator().next();
 
 		assertEquals(state3, snapshot3);
 		assertEquals(2, pendingOffsetsToCommit.size());
-		assertEquals(state3, pendingOffsetsToCommit.get(141L));
+		assertEquals(state3.f0, pendingOffsetsToCommit.get(141L));
 		
 		// ack checkpoint 3, subsumes number 2
 		consumer.notifyCheckpointComplete(141L);
@@ -369,7 +358,7 @@ public class FlinkKafkaConsumerBaseTest {
 					Assert.fail("Trying to restore offsets even though there was no restore state.");
 					return null;
 				}
-			}).when(fetcher).restoreOffsetsAndWaterMark(any(HashMap.class));
+			}).when(fetcher).restoreOffsetsAndWaterMark(any(Tuple2.class));
 			return fetcher;
 		}
 
