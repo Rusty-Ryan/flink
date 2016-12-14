@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.connectors.kafka.internals;
 
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
@@ -73,6 +74,9 @@ public abstract class AbstractFetcher<T, KPH> {
 	/** Only relevant for punctuated watermarks: The current cross partition watermark */
 	private volatile long maxWatermarkSoFar = Long.MIN_VALUE;
 
+	//TODO: maybe don't need
+	private volatile long lastEmittedPeriodicWatermark = Long.MIN_VALUE;
+
 	// ------------------------------------------------------------------------
 	
 	protected AbstractFetcher(
@@ -119,7 +123,7 @@ public abstract class AbstractFetcher<T, KPH> {
 					(KafkaTopicPartitionStateWithPeriodicWatermarks<?, ?>[]) allPartitions;
 			
 			PeriodicWatermarkEmitter periodicEmitter = 
-					new PeriodicWatermarkEmitter(parts, sourceContext, processingTimeProvider, autoWatermarkInterval);
+					new PeriodicWatermarkEmitter(parts, sourceContext, processingTimeProvider, autoWatermarkInterval, lastEmittedPeriodicWatermark);
 			periodicEmitter.start();
 		}
 	}
@@ -176,21 +180,35 @@ public abstract class AbstractFetcher<T, KPH> {
 
 	//here
 	/**
-	 * Takes a snapshot of the partition offsets.
+	 * Takes a snapshot of the partition offsets and last emitted watermark.
 	 * 
 	 * <p>Important: This method mus be called under the checkpoint lock.
 	 * 
-	 * @return A map from partition to current offset.
+	 * @return A tuple includes a map from partition to current offset and last emitted watermark.
 	 */
-	public HashMap<KafkaTopicPartition, Long> snapshotCurrentState() {
+	public Tuple2<HashMap<KafkaTopicPartition, Long>, Long> snapshotCurrentState() {
 		// this method assumes that the checkpoint lock is held
 		assert Thread.holdsLock(checkpointLock);
 
-		HashMap<KafkaTopicPartition, Long> state = new HashMap<>(allPartitions.length);
+		HashMap<KafkaTopicPartition, Long> offsetsState = new HashMap<>(allPartitions.length);
 		for (KafkaTopicPartitionState<?> partition : subscribedPartitions()) {
-			state.put(partition.getKafkaTopicPartition(), partition.getOffset());
+			offsetsState.put(partition.getKafkaTopicPartition(), partition.getOffset());
 		}
-		return state;
+
+		//TODO: maybe null
+		Long lastEmittedWatermark = Long.MIN_VALUE;
+
+		switch (timestampWatermarkMode) {
+			case PERIODIC_WATERMARKS:
+				lastEmittedWatermark = lastEmittedPeriodicWatermark;
+				break;
+			case PUNCTUATED_WATERMARKS:
+				lastEmittedWatermark = maxWatermarkSoFar;
+				break;
+		}
+
+
+		return Tuple2.of(offsetsState, lastEmittedWatermark);
 	}
 
 	//here (maybe add method)
@@ -199,11 +217,26 @@ public abstract class AbstractFetcher<T, KPH> {
 	 * 
 	 * @param snapshotState The offsets for the partitions 
 	 */
-	public void restoreOffsets(HashMap<KafkaTopicPartition, Long> snapshotState) {
+	public void restoreOffsetsAndWaterMark(Tuple2<HashMap<KafkaTopicPartition, Long>, Long> snapshotState) {
+		HashMap<KafkaTopicPartition, Long> offsetsState = snapshotState.f0;
+
 		for (KafkaTopicPartitionState<?> partition : allPartitions) {
-			Long offset = snapshotState.get(partition.getKafkaTopicPartition());
+			Long offset = offsetsState.get(partition.getKafkaTopicPartition());
 			if (offset != null) {
 				partition.setOffset(offset);
+			}
+		}
+
+		long lastEmittedWatermark = snapshotState.f1;
+
+		if (lastEmittedWatermark != Long.MIN_VALUE){
+			switch (timestampWatermarkMode) {
+				case PERIODIC_WATERMARKS:
+					lastEmittedPeriodicWatermark = lastEmittedWatermark;
+					break;
+				case PUNCTUATED_WATERMARKS:
+					maxWatermarkSoFar = lastEmittedWatermark;
+					break;
 			}
 		}
 	}
@@ -510,13 +543,14 @@ public abstract class AbstractFetcher<T, KPH> {
 				KafkaTopicPartitionStateWithPeriodicWatermarks<?, ?>[] allPartitions,
 				SourceContext<?> emitter,
 				ProcessingTimeService timerService,
-				long autoWatermarkInterval)
+				long autoWatermarkInterval,
+				long lastEmittedWatermark)
 		{
 			this.allPartitions = checkNotNull(allPartitions);
 			this.emitter = checkNotNull(emitter);
 			this.timerService = checkNotNull(timerService);
 			this.interval = autoWatermarkInterval;
-			this.lastWatermarkTimestamp = Long.MIN_VALUE;
+			this.lastWatermarkTimestamp = lastEmittedWatermark;
 		}
 
 		//-------------------------------------------------

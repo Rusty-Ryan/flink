@@ -369,7 +369,7 @@ public class FlinkKafkaConsumerBaseTest {
 					Assert.fail("Trying to restore offsets even though there was no restore state.");
 					return null;
 				}
-			}).when(fetcher).restoreOffsets(any(HashMap.class));
+			}).when(fetcher).restoreOffsetsAndWaterMark(any(HashMap.class));
 			return fetcher;
 		}
 
