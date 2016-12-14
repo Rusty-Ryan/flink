@@ -174,6 +174,7 @@ public abstract class AbstractFetcher<T, KPH> {
 	//  snapshot and restore the state
 	// ------------------------------------------------------------------------
 
+	//here
 	/**
 	 * Takes a snapshot of the partition offsets.
 	 * 
@@ -192,6 +193,7 @@ public abstract class AbstractFetcher<T, KPH> {
 		return state;
 	}
 
+	//here (maybe add method)
 	/**
 	 * Restores the partition offsets.
 	 * 
@@ -498,7 +500,8 @@ public abstract class AbstractFetcher<T, KPH> {
 		private final ProcessingTimeService timerService;
 
 		private final long interval;
-		
+
+		//here
 		private long lastWatermarkTimestamp;
 		
 		//-------------------------------------------------

@@ -98,6 +98,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 	 * The assigner is kept in serialized form, to deserialize it into multiple copies */
 	private SerializedValue<AssignerWithPunctuatedWatermarks<T>> punctuatedWatermarkAssigner;
 
+	//here (maybe another variable)
 	private transient ListState<Tuple2<KafkaTopicPartition, Long>> offsetsStateForCheckpoint;
 
 	// ------------------------------------------------------------------------
@@ -311,6 +312,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 	//  Checkpoint and restore
 	// ------------------------------------------------------------------------
 
+	//here
 	@Override
 	public void initializeState(FunctionInitializationContext context) throws Exception {
 
@@ -332,6 +334,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 		}
 	}
 
+	//here
 	@Override
 	public void snapshotState(FunctionSnapshotContext context) throws Exception {
 		if (!running) {
